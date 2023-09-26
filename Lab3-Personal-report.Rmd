@@ -16,7 +16,8 @@ knitr::opts_chunk$set(echo = TRUE, fig.show="hold")
 We are given an MDP template for a grid world, and we are asked to complete it. Notice, a seed is set to be able to reproduce the report.
 
 ```{r}
-set.seed(1378)
+# set.seed(1378)
+set.seed(1111)
 ```
 
 ```{r}
@@ -83,8 +84,11 @@ GreedyPolicy <- function(x, y){
   # 
   # Returns:
   #   An action, i.e. integer in {1,2,3,4}.
+  action <- which.max(q_table[x, y, ])
+  if(length(action) != 1)
+    action <- sample(action, 1)
   
-  return(which.max(q_table[x, y, ]))
+  return(action)
   
 }
 
@@ -202,13 +206,13 @@ for(i in 1:10000){
 
 > What has the agent learned after the first 10 episodes ?
 
-Depending on the run, the agent either still has not learnt any state-action value (q value) or, it learnt very little about the q values of the states adjacent to the terminal states.
+Depending on the run, it learnt very little about the q values of the states adjacent to the terminal states.
 
 > Is the final greedy policy (after 10000 episodes) optimal for all states, i.e. not only for the initial state ? Why / Why not ?
 
 Depending on the run, the policy is mostly optimal. The agent does not take actions that results in a negative reward, and it tries to traverse from anywhere in the grid to reach the +10 reward.
 
-The Policy around the initial state is also seems optimal as any directions towards up, down or right is optimal. The reason that the may cause to have equal q values for initial state is that the agent did not explore enough around the initial state and since at the start of the episde the q values are all equal to zero, agent has no information about the initial state.
+The Policy around the initial state is also seems optimal as any directions towards up, down or right is optimal. The reason that the may cause to have equal q values for initial state is that the agent did not explore enough around the initial state and since at the start of the episode the reward is equal to zero, and agent gets no information about the initial state.
 
 > Do the learned values in the Q-table reflect the fact that there are multiple paths (above and below the negative rewards) to get to the positive reward ? If not, what could be done to make it happen?
 
@@ -288,7 +292,7 @@ Although we now know the effect of $\gamma$ on the learnt policy, if agent does 
 ## Question 2.4
 
 
-```{r}
+```{r, out.width="50%"}
 # Environment C (the effect of beta).
 
 H <- 3
@@ -328,7 +332,7 @@ reticulate::use_condaenv("tbi26")
 
 
 
-```{r reinforce, cache=TRUE}
+```{r reinforce, cache=TRUE, out.width="50%"}
 # By Jose M. Peña and Joel Oskarsson.
 # For teaching purposes.
 # jose.m.pena@liu.se.
@@ -583,7 +587,7 @@ No, since the Q Learning learns a parameterized Q table (state-action value tabl
 
 ## Question 2.7
 
-```{r env e, cache=TRUE}
+```{r env e, cache=TRUE, out.width="50%"}
 # Environment E (training with top row goal positions)
 
 train_goals <- list(c(4,1), c(4,2), c(4,3), c(4,4))
@@ -605,9 +609,9 @@ show_validation(5000)
 
 > Has the agent learned a good policy? Why / Why not?
 
-No. The agent learns a policy to get to the left side of the map, but in the validation maps which have different goals, agent would not preform good. The reason is that the trajectories with high sample weights that the agent uses to learn cause the nework to map any states to left action in most of the cases.
+No. The agent learns a policy to get to the left side of the map, but in the validation maps which have different goals, agent would not preform good. The reason is that the trajectories with high sample weights that the agent uses to learn cause the network to map any states to left action in most of the cases.
 
 > If the results obtained for environments D and E differ, explain why.
 
 The reason is that, the way the environment changes now is different. In fact, the policy network classify most of the states to left action as the sample weights for those state-action pairs are big. But, when the goal moves to somewhere else on the map, the network would not generate a better action as it did not get enough state-action pairs with actions heading towards the new goal with big sample weights; in fact, the sample weight probably for any actions except left were low.
-However, in question D, the agent interacts with the training environemt that is more close to the validation. In other words, in environment E the trajectories are biased in compare to the validation maps but in environment D the trajectories are unbiased.
+However, in question D, the agent interacts with the training environment that is more close to the validation. In other words, in environment E the trajectories are biased in compare to the validation maps but in environment D the trajectories are unbiased.
