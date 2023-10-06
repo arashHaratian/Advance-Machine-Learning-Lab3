@@ -1,27 +1,31 @@
 ---
-title: "Lab3-Personal report"
-author: "Arash"
-date: "2023-09-19"
-output:
-  pdf_document: default
-  html_document: default
+title: "LAB 3: REINFORCEMENT LEARNING"
+author: "Arash Haratian, Daniel Díaz-Roncero González, Elena Dalla Torre & Juan Manuel Pardo Ladino"
+output: pdf_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, fig.show="hold")
+```{r setup, include = FALSE, cache = FALSE, echo=FALSE}
+library(knitr)
+opts_chunk$set(fig.show = "hold",out.width ="70%",fig.align='center')
 ```
 
-## Question 2.1
+## Environment A    
+  
+    
+   
+```{r,warning=FALSE,message=FALSE}
+# By Jose M. Peña and Joel Oskarsson.
+# For teaching purposes.
+# jose.m.pena@liu.se.
 
-We are given an MDP template for a grid world, and we are asked to complete it. Notice, a seed is set to be able to reproduce the report.
+#####################################################################################################
+# Q-learning
+#####################################################################################################
 
-```{r}
-# set.seed(1378)
-set.seed(1111)
-```
-
-```{r}
+# install.packages("ggplot2")
+# install.packages("vctrs")
 library(ggplot2)
+library(nnet)
 
 arrows <- c("^", ">", "v", "<")
 action_deltas <- list(c(1,0), # up
@@ -84,13 +88,10 @@ GreedyPolicy <- function(x, y){
   # 
   # Returns:
   #   An action, i.e. integer in {1,2,3,4}.
-  max_value <- max(q_table[x, y, ])
-  action <- which(q_table[x, y, ] == max_value) 
-  if(length(action) != 1)
-    action <- sample(action, 1)
   
+  # Your code here.
+  action <- which.is.max(q_table[x,y,])
   return(action)
-  
 }
 
 EpsilonGreedyPolicy <- function(x, y, epsilon){
@@ -104,10 +105,12 @@ EpsilonGreedyPolicy <- function(x, y, epsilon){
   # Returns:
   #   An action, i.e. integer in {1,2,3,4}.
   
-  if(runif(1) < epsilon){
-    action <- sample(1:4, 1)
-  }else{
-    action <- GreedyPolicy(x, y)
+  # Your code here.
+  u <- runif(1,0,1)
+  if(u < epsilon){
+    action <- floor(runif(1,1,5))
+  }else {
+    action <- GreedyPolicy(x,y)
   }
   return(action)
 }
@@ -143,7 +146,7 @@ q_learning <- function(start_state, epsilon = 0.5, alpha = 0.1, gamma = 0.95,
   # 
   # Args:
   #   start_state: array with two entries, describing the starting position of the agent.
-  #   epsilon (optional): probability of acting greedily.
+  #   epsilon (optional): probability of acting randomly.
   #   alpha (optional): learning rate.
   #   gamma (optional): discount factor.
   #   beta (optional): slipping factor.
@@ -156,31 +159,37 @@ q_learning <- function(start_state, epsilon = 0.5, alpha = 0.1, gamma = 0.95,
   #   q_table (global variable): Recall that R passes arguments by value. So, q_table being
   #   a global variable can be modified with the superassigment operator <<-.
   
-  current_state <- start_state
+  # Your code here.
+  x <- start_state[1]
+  y <- start_state[2]
   episode_correction <- 0
   repeat{
-    x <- current_state[1]
-    y <- current_state[2]
     # Follow policy, execute action, get reward.
-    a <- EpsilonGreedyPolicy(x, y, epsilon)
-    next_state <- transition_model(x, y, a, beta)
-    reward <- reward_map[next_state[1], next_state[2]]
+    action <- EpsilonGreedyPolicy(x,y,epsilon)
+    newstate <- transition_model(x, y, action, beta)
+    ns_x <- newstate[1]
+    ns_y <- newstate[2]
+    reward <- reward_map[ns_x,ns_y]
+    
     # Q-table update.
-    correction <- reward + gamma * max(q_table[next_state[1], next_state[2], ]) -  q_table[x, y, a]
-    q_table[x, y, a] <<- q_table[x, y, a] + alpha * correction
+    correction <- reward + gamma * max(q_table[ns_x,ns_y,]) - q_table[x,y,action]
     episode_correction <- episode_correction + correction
-    current_state <- next_state
-    if(reward!=0)
+    q_table[x,y,action] <<- q_table[x,y,action] + alpha*(correction) 
+    x <- ns_x
+    y <- ns_y
+    
+    if(reward!=0){
       # End episode.
       return (c(reward,episode_correction))
+    }
   }
   
 }
-```
 
-## Question 2.2
+#####################################################################################################
+# Q-Learning Environments
+#####################################################################################################
 
-```{r, out.width="20%"}
 # Environment A (learning)
 
 H <- 5
@@ -194,7 +203,7 @@ q_table <- array(0,dim = c(H,W,4))
 
 vis_environment()
 
-
+set.seed(111)
 for(i in 1:10000){
   foo <- q_learning(start_state = c(3,1))
   
@@ -202,29 +211,20 @@ for(i in 1:10000){
     vis_environment(i)
 }
 
-
 ```
+  
+After the first 10 iterations the agent hasn't reached yet the good reward, but it has reached the negative rewards from 6 different states (depending on the run, the number of these states might change) and it has learned that it shouldn't go directly to that state from these states.  
+  
+It's not optimal for all states, for example if we look at $(x=1,y=6)$ we see that the greedy policy says to go to the left, when actually the "best" (fastest) path to the reward would be to go up.  
+  
+Yes, the values from the Q-table reflect both paths, under and over the negative rewards, but this is random and depends on the run.  
 
-> What has the agent learned after the first 10 episodes ?
-
-Depending on the run, it learnt very little about the q values of the states adjacent to the terminal states.
-
-> Is the final greedy policy (after 10000 episodes) optimal for all states, i.e. not only for the initial state ? Why / Why not ?
-
-Depending on the run, the policy is mostly optimal. The agent does not take actions that results in a negative reward, and it tries to traverse from anywhere in the grid to reach the +10 reward.
-
-The Policy around the initial state is also seems optimal as any directions towards up, down or right is optimal. The reason that the may cause to have equal q values for initial state is that the agent did not explore enough around the initial state and since at the start of the episode the reward is equal to zero, and agent gets no information about the initial state.
-
-> Do the learned values in the Q-table reflect the fact that there are multiple paths (above and below the negative rewards) to get to the positive reward ? If not, what could be done to make it happen?
-
-No. From each state around the negative rewards, agent can exactly have one path to get to the positive reward. The reason is that, MDP is deterministic and if agent act based on greedy policy, there will be a unique path for each given state to the positive reward.
-
- 
-## Question 2.3
-
-```{r, out.width="50%"}
+## Environment B    
+  
+  
+```{r,warning=FALSE,message=FALSE}
 # Environment B (the effect of epsilon and gamma)
-
+set.seed(222)
 H <- 7
 W <- 8
 
@@ -236,7 +236,7 @@ reward_map[4,8] <- 10
 
 q_table <- array(0,dim = c(H,W,4))
 
-vis_environment()
+#vis_environment()
 
 MovingAverage <- function(x, n){
   
@@ -258,8 +258,8 @@ for(j in c(0.5,0.75,0.95)){
   }
   
   vis_environment(i, gamma = j)
-  plot(MovingAverage(reward,100),type = "l")
-  plot(MovingAverage(correction,100),type = "l")
+  #plot(MovingAverage(reward,100),type = "l")
+  #plot(MovingAverage(correction,100),type = "l")
 }
 
 for(j in c(0.5,0.75,0.95)){
@@ -274,26 +274,42 @@ for(j in c(0.5,0.75,0.95)){
   }
   
   vis_environment(i, epsilon = 0.1, gamma = j)
-  plot(MovingAverage(reward,100),type = "l")
-  plot(MovingAverage(correction,100),type = "l")
+  #plot(MovingAverage(reward,100),type = "l")
+  #plot(MovingAverage(correction,100),type = "l")
 }
+
+
 ```
+  
+Let's analyze first the different cases:  
 
-Based on the experiments above, we can see the effect of the $\epsilon$ and $\gamma$ on the agent and the policy that it learns.
+  - When epsilon = 0.5, alpha = 0.1, gamma = 0.5, beta = 0: The agent finds both rewards and the policy dictates to go to that one which is closer.   
+    
+  - When epsilon = 0.5, alpha = 0.1, gamma = 0.75, beta = 0: The agent finds both rewards and when it is in a state between the two positive rewards, the policy dictates to go to the highest reward (the 10).  
+    
+  - When epsilon = 0.5, alpha = 0.1, gamma = 0.95, beta = 0: The agent finds both rewards and the policy deliberately avoids the "5" reward to go to the highest reward (the 10).  
+  
+  - When epsilon = 0.1, alpha = 0.1, gamma = 0.5, beta = 0: The agent doesn't find the "10" reward and the policy dictates to go to the "5" reward in the fastest way.  
+  
+  - When epsilon = 0.1, alpha = 0.1, gamma = 0.75, beta = 0: We get very similar results as with gamma 0.5, but this time because of the randomness of the process it reached the "10" policy once and for that state knows how to go to the "10" reward.  
+  
+  - When epsilon = 0.1, alpha = 0.1, gamma = 0.95, beta = 0: The agent doesn't find the "10" reward and the policy tries to follow the initial paths that it found as with the high gamma, the values of the Q-table are very high from the beginning.  
+    
+From these we can reach the following conclusions:  
 
-**Regarding the $\gamma$:**
+  - A higher epsilon allows for the agent to find the different positive rewards, as if even when one reward has been found, the epsilon greedy policy allows for the agent to deviate from the known positive paths to explore the grid and find other rewards.  
+  
+  - A higher gamma value with a reasonably high epsilon value will make the policy to dictate that the agent goes to the highest reward (even when a lower positive reward is close), as the epsilon is high enough for the agent to find the highest reward and the gamma makes much more valuable this reward, so once it is found, the instruction to get to this reward will propagate through the grid easier and faster.  
+  
+  - A lower epsilon will make the agent to not deviate much from the initial paths that reach a positive result, which impedes the agent to find other positive results, even when they are higher.  
+  
+  - A lower gamma value with a low epsilon will make the agent to not deviate at all from the first paths that it finds to the reward, even if that means to reach the reward faster, as the Q-values for the states for these initials paths will be very high and the low epsilon doesn't allow to try many more different paths.   
 
-In the experiment with $\epsilon = 0.5$, we can observe that as we increase the the discounting factor, the agent tends to learn the policy that results in a higher expected return in a long-term. If we put $\gamma = 0.95$, it will result in a agent that tries to avoid not only the negative rewards, but also the positive 5 reward in the middle. In contrast, if $\gamma = 0.5$ or even $\gamma = 0.75$, the agent will get to the +5 reward if it is to the left, below or above that state.
-
-**Regarding the $\epsilon$:**
-
-Although we now know the effect of $\gamma$ on the learnt policy, if agent does not explore the environment enough, it may result in a sub-optimal policy. The policies with all the different values of $\gamma$ are resembling the optimal policies, but they do not have an optimal policy for some states close to the lower border. Also, the lack of exploration results in a Q table that does not have optimal values for the states close to the lower border.
-
-
-## Question 2.4
-
-
-```{r, out.width="50%"}
+  
+## Environment C      
+  
+  
+```{r,warning=FALSE,message=FALSE}
 # Environment C (the effect of beta).
 
 H <- 3
@@ -316,33 +332,21 @@ for(j in c(0,0.2,0.4,0.66)){
   vis_environment(i, gamma = 0.6, beta = j)
 }
 ```
+   
+When the beta is 0, there is no possibility of slipping to the right or left of the direction dictated by the policy (the agent can still go to different states because of the epsilon, but no possibility of slipping), hence the policy dictates to go to the positive reward in the fastest way.  As the beta starts to grow, the policy tries to avoid the possibility of falling into the negative rewards, starting from the states of the top row (x=3) and the states of the first columns of the middle row (x=2), as if in these states of the second row if it kept going to the right instead of going up, it would have chances to fall into the negative rewards and in the second row the farther the agent is from the positive reward (the first columns) the more chances it has to fall to the negative rewards as it has more states with negative rewards to the right to go through. For the beta = 0.66 we now see that the policy dictates that for all values (except for y=6) of the second row, the agent should go up, it is also noticeable to see that for x=1,y=1 the policy says to fo to the left, to have 0 chances of falling to the negative reward in x=1,y=2.    
+  
+As beta goes up the reward that we get is more noisy and the policy might not be the fastest. For beta equal to 0.66 the policy tries to avoid the possibility of falling into negative rewards and ends up dictating to go to a cell which might be in the opposite direction of the reward and might create some loops.  
 
+## Environment D      
 
-In case of a stochastic environment, the policy tries to generate an action that avoid agent to fall in to the negative rewards  on the bottom edge of the map.
+The code used for this task is: 
 
-For instance, when $\beta = 0.2$ or $\beta = 0.4$, agent decides to go up in states  (2,2) and (2,3) and even (2,4). In case of $\beta = 0.6$, the agent even tries to go to the right even when $y = 6$ so that it may by chance goes to the goal state.     
-
-In general, as the $\beta$ parameter gets bigger, the agent can not get a good signal (it gets a noisy signal) for the chosen actions in each state;therefore, The policy may not be optimal (specially if $\beta$ is big enough).
-
-
-## Question 2.5
-
-```{r}
-reticulate::use_condaenv("tbi26")
-```
-
-
-
-```{r reinforce, cache=TRUE, out.width="50%"}
-# By Jose M. Peña and Joel Oskarsson.
-# For teaching purposes.
-# jose.m.pena@liu.se.
-
+```{r,warning=FALSE,message=FALSE,eval=FALSE,results='hold'}
 #####################################################################################################
 # REINFORCE
 #####################################################################################################
 
-# install.packages("keras")
+install.packages("keras")
 library(keras)
 
 # install.packages("ggplot2")
@@ -534,7 +538,6 @@ reinforce_episode <- function(goal, gamma = 0.95, beta = 0){
 #####################################################################################################
 # REINFORCE Environments
 #####################################################################################################
-
 # Environment D (training with random goal positions)
 
 H <- 4
@@ -572,23 +575,35 @@ for(i in 1:5000){
 }
 
 show_validation(5000) 
+
+```
+  
+The finals plots (after 5000 episodes) from this environment are the following, (we had the images saved and now we load them):  
+
+```{r,warning=FALSE,message=FALSE,results='hold'}
+library(imager)
+plot(load.image("ENVd_val1.png"),axes=FALSE)
+plot(load.image("ENVd_val2.png"),axes=FALSE)
+plot(load.image("ENVd_val3.png"),axes=FALSE)
+plot(load.image("ENVd_val4.png"),axes=FALSE)
+plot(load.image("ENVd_val5.png"),axes=FALSE)
+plot(load.image("ENVd_val6.png"),axes=FALSE)
+plot(load.image("ENVd_val7.png"),axes=FALSE)
+plot(load.image("ENVd_val8.png"),axes=FALSE)
 ```
 
+In general the agent does learn a good policy that reaches the reward in the fastest way, although for some specific states, the policy might not be optimal.  
 
-> Has the agent learned a good policy? Why / Why not?
+No, the Q-learning algorithm could not have been used as you can not train on some goals and then use some other goals for validation. Additionally, the Q algorithm would not work well in this case because it's policy is deterministic and does not take any additional parameters. This means that it can only generate a policy for a fixed reward position.The Q Learning learns a parameterized Q table (state-action value table) based on the given environment. If the environment and the location of the goal changes, the learnt Q-values are not correct anymore, and agent cannot act based on the values and the policy derived from it.  
 
-Based on the plots, the learnt policies are almost optimal where some actions are incorrect which cause a loop. The reason for this is that, REINFORCE network is just a classification network that maps the state to the taken action with a sample weight that comes from the reward and the discounted return. Since the goal changes, the set of states and actions with high reward and discounted return (sample weights) may not be useful or even misleading for the newly generated train environments. However, the model manage to converge and maximize the goal function $J(\theta) = V_{\pi}(S_0)$ by getting more samples by interacting with the environment. 
-
-Note that REINFORCE tries to learn the policy directly.
-
-> Could you have used the Q-learning algorithm to solve this task ?
-
-No, since the Q Learning learns a parameterized Q table (state-action value table) based on the given environment. If the environment and the location of the goal changes, the learnt Q-values are not correct anymore, and agent cannot act based on the values and the policy derived from it.
+The reinforcement algorithm suits perfectly this problem because we need the reward location as a parameter and this algorithm is indeed a parametrized algorithm. Another reason why it works well in this case is because the training data varied the location of the reward over the entire grid, and therefore the agent can raise a general space awareness to be able to decide the proper direction to go depending on the reward location and initial state.  
 
 
-## Question 2.7
+## Environment E  
 
-```{r env e, cache=TRUE, out.width="50%"}
+The code for this task is:  
+
+```{r,warning=FALSE,message=FALSE,eval=FALSE,results='hold'}
 # Environment E (training with top row goal positions)
 
 train_goals <- list(c(4,1), c(4,2), c(4,3), c(4,4))
@@ -607,12 +622,31 @@ for(i in 1:5000){
 show_validation(5000)
 ```
 
+The finals plots (after 5000 episodes) from this environment are the following, (we had the images saved and now we load them):  
 
-> Has the agent learned a good policy? Why / Why not?
+```{r,warning=FALSE,message=FALSE,results='hold'}
+library(imager)
 
-No. The agent learns a policy to get to the left side of the map, but in the validation maps which have different goals, agent would not preform good. The reason is that the trajectories with high sample weights that the agent uses to learn cause the network to map any states to left action in most of the cases.
+plot(load.image("ENVe_val1.png"),axes=FALSE)
+plot(load.image("ENVe_val2.png"),axes=FALSE)
+plot(load.image("ENVe_val3.png"),axes=FALSE)
+```
+  
+The agent hasn't learned a good policy, it seems that since the training goals were all in the top row, we have an overfitting problem were the agent has learned to always go in the same direction, which in two of the three validation cases is to go up, which makes sense having into account that for the training data they always needed to go up and then to specific state in the top row. In the last validation case, the policy dictates to always go to the left (excepting state x=1,y=2) which isn't either a good policy, since it's not telling the agent to go to the goal, and when it reaches the first column, it is not told to go down. The reason behind this behaviour might be that, for the first two validation cases, the agent knows that at some point it needs to go up (since it knows where the goal is and for some states it in fact needs to go up) and since it has learned from training to go up until the first row, then it does so, while for the third case it knows that for no state it needs to go up (since it knows the position of the goal and that is the first row) and from the training data (we had the (4,1) training data) it learned that if the goal is in the first column at some point it would need to go full left, hence it dictates to only go full left.  
 
-> If the results obtained for environments D and E differ, explain why.
+As explained the results differ because of the overfitting. The way the environment changes now is different. In fact, the policy network classify most of the states to left action as the sample weights for those state-action pairs are big. But, when the goal moves to somewhere else on the map, the network would not generate a better action as it did not get enough state-action pairs with actions heading towards the new goal with big sample weights; in fact, the sample weight probably for any actions except left were low.
+However, in question D, the agent interacts with the training environment that is more close to the validation. In other words, in environment E the trajectories are biased in compare to the validation maps but in environment D the trajectories are unbiased.  
 
-The reason is that, the way the environment changes now is different. In fact, the policy network classify most of the states to left action as the sample weights for those state-action pairs are big. But, when the goal moves to somewhere else on the map, the network would not generate a better action as it did not get enough state-action pairs with actions heading towards the new goal with big sample weights; in fact, the sample weight probably for any actions except left were low.
-However, in question D, the agent interacts with the training environment that is more close to the validation. In other words, in environment E the trajectories are biased in compare to the validation maps but in environment D the trajectories are unbiased.
+## Statement of Contribution
+
+All the members of the group contributed with code, text and discussions in every question. The individuals solutions of all members were compared in order to decide the best approach. Although the four students contributed to every question a more detailed list of who contributed more to each question would be the following:  
+
+  - Enviroment A: Daniel Díaz-Roncero González and Juan Manuel Pardo Ladino  
+  - Enviroment B: Elena Dalla Torre and Arash Haratian       
+  - Enviroment C: Juan Manuel Pardo Ladino and Elena Dalla Torre     
+  - Enviroment D: All contributed equally   
+  - Enviroment E: Arash Haratian and Daniel Díaz-Roncero González       
+
+
+
+
